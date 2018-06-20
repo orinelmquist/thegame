@@ -76,7 +76,7 @@ void DJS::merge(int i, int j) {
 bool DJS::connected() {
     int c = v[0]->parent->val;
     
-    for (int i = 1; i < v.size(); i++)
+    for (size_t i = 1; i < v.size(); i++)
         if (find(v[i])->val != c)
             return false;
     
@@ -202,7 +202,7 @@ void World::buildDungeon() {
     do {
         moves = 0;
         std::sort(rooms.begin(), rooms.end(), Room::compareXY);
-        for (int i = 0; i < rooms.size(); i++)
+        for (size_t i = 0; i < rooms.size(); i++)
             while (rooms[i].moveXY(rooms, roomDistanceThreshold))
                 moves++;
     } while (moves > 0);
@@ -439,6 +439,7 @@ std::ostream &operator<<(std::ostream &out, const World &w) {
     return out;
 }
 
+// TODO: fix the recursive calls as they can/will cause a stack overflow
 void World::flood(std::vector<bool> &visited, std::vector<bool> &connected, int x, int y, int &c) {
     visited[y * size + x] = true;
     if (map[y * size + x] == FLOOR) {
