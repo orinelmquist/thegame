@@ -207,7 +207,6 @@ void World::buildDungeon() {
                 moves++;
     } while (moves > 0);
     
-    clear();
     for (Room r : rooms)
         placeRoom(r);
     
@@ -231,7 +230,7 @@ void World::buildDungeon() {
         
         //Randomly select a room, if it is a new connection add to the list and update the DJS
         c = rand() % possHalls.size();
-        curr = possHalls[rand() % possHalls.size()];
+        curr = possHalls[c];
         
         if (connSet.find(connSet.v[curr.rooms().first])->val != connSet.find(connSet.v[curr.rooms().second])->val && curr.len() <= 3 * roomDistanceThreshold) {
             halls.push_back(curr);
