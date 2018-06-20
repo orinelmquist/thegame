@@ -13,10 +13,12 @@
 
 //const unsigned int SEED = 143245543;
 
+//Seed         Error
 
 int main() {
         
     unsigned int seed = time(NULL);
+//    unsigned int seed = 1529476068;
 
     srand(seed);
 
@@ -31,7 +33,6 @@ int main() {
     w.buildDungeon();
 
     std::cout << w << std::endl;
-    
     
     return 0;
 }

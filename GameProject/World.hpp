@@ -51,13 +51,15 @@ public:
     
     bool equals(Hall other);
     bool sameConnection(Hall other);
+    bool crosses(Hall other);
     
+    int len();
     std::pair<int, int> rooms();
     std::pair<int, int> coords();
     int dir();
     
 private:
-    int start, startxy, end, endxy, direction;
+    int start, startxy, end, endxy, direction, length;
 };
 
 class World {
@@ -81,7 +83,7 @@ private:
     
     void placeRoom(Room r);
     std::vector<Hall> setPossHalls();
-    std::vector<Hall> updateHalls();
+    std::vector<Hall> updateHalls(std::vector<Hall> possibles);
     int getRoomByEdge(int coord);
     void placeHall(Hall h);
     void flood(std::vector<bool> &visited, std::vector<bool> &connected, int x, int y, int &c);

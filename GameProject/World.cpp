@@ -173,7 +173,7 @@ void World::buildCave() {
  */
 
 void World::buildDungeon() {
-    int numOfRooms = 10;
+    int numOfRooms = 20;
     int maxAttempts = 2000, attempts = 0;
     int roomDistanceThreshold = 3;
     rooms.clear();
@@ -183,7 +183,7 @@ void World::buildDungeon() {
     for (int i = 0; i < numOfRooms; i++) {
         Room temp = Room();
         attempts = 0;
-        while (!temp.valid(rooms, roomDistanceThreshold) || attempts++ >= maxAttempts)
+        while (!temp.valid(rooms, roomDistanceThreshold) && attempts++ < maxAttempts)
             temp = Room();
         if (attempts >= maxAttempts)
             break;
@@ -191,11 +191,11 @@ void World::buildDungeon() {
         rooms.push_back(temp);
     }
     
-    for (Room r : rooms)
-        placeRoom(r);
-    std::cout << "Before centralization: " << std::endl;
-    std::cout << (*this) << std::endl;
-
+//    for (Room r : rooms)
+//        placeRoom(r);
+//    std::cout << "Before centralization: " << std::endl;
+//    std::cout << (*this) << std::endl;
+    
     //Sort rooms by distance to center and compact the rooms
     int moves;
     
@@ -216,10 +216,13 @@ void World::buildDungeon() {
     DJS connSet(rooms.size());
     Hall curr;
     bool strandedRoom = false;
+    int c;
+    
+    possHalls = setPossHalls();
     
     do {
         //Update possible hallways, if none, break and note the stranded room
-        possHalls = updateHalls();
+        possHalls = updateHalls(possHalls);
         
         if (possHalls.size() == 0) {
             strandedRoom = true;
@@ -227,14 +230,20 @@ void World::buildDungeon() {
         }
         
         //Randomly select a room, if it is a new connection add to the list and update the DJS
+        c = rand() % possHalls.size();
         curr = possHalls[rand() % possHalls.size()];
         
-        if (connSet.find(connSet.v[curr.rooms().first])->val != connSet.find(connSet.v[curr.rooms().second])->val) {
+        if (connSet.find(connSet.v[curr.rooms().first])->val != connSet.find(connSet.v[curr.rooms().second])->val && curr.len() <= 3 * roomDistanceThreshold) {
             halls.push_back(curr);
             connSet.merge(curr.rooms().first, curr.rooms().second);
-            placeHall(curr);
+        } else {
+            possHalls.erase(possHalls.begin() + c);
         }
+        
     } while (!connSet.connected());
+    
+    for (Hall h : halls)
+        placeHall(h);
     
     //Deal with the standed room
 }
@@ -242,8 +251,8 @@ void World::buildDungeon() {
 std::vector<Hall> World::setPossHalls() {
     int x, y, n, endRoom;
     std::vector<std::vector<int>> temp;
-    std::set<int> edges;
     std::vector<Hall> possibles;
+    std::set<int> edges;
     
     for (Room r : rooms)
         for (std::vector<int> v : r.edges())
@@ -317,16 +326,15 @@ std::vector<Hall> World::setPossHalls() {
     return possibles;
 }
 
-std::vector<Hall> World::updateHalls() {
+std::vector<Hall> World::updateHalls(std::vector<Hall> possibles) {
     std::vector<Hall> temp;
-    std::vector<Hall> possibles = setPossHalls();
     bool matches;
     
     for (Hall p : possibles) {
         matches = false;
         
         for (Hall h : halls)
-            if (h.sameConnection(p))
+            if (h.sameConnection(p) && !h.crosses(p))
                 matches = true;
         
         if (!matches)
@@ -350,7 +358,7 @@ int World::getRoomByEdge(int coord) {
 void World::placeRoom(Room r) {
     for (int y = r.coords().second + 1; y < r.coords().second + r.dim().second; y++)
         for (int x = r.coords().first + 1; x < r.coords().first + r.dim().first; x++)
-            map[y * size + x] = FLOOR;
+                map[y * size + x] = FLOOR;
 }
 
 void World::placeHall(Hall h) {
@@ -359,14 +367,6 @@ void World::placeHall(Hall h) {
     int y1 = h.coords().first / size;
     int y2 = h.coords().second / size;
     switch (h.dir()) {
-        case NORTH:
-            for (int y = y1; y <= y2; y--) {
-                map[y * size + x1 - 1] = WALL;
-                map[y * size + x1] = FLOOR;
-                map[y * size + x1 + 1] = WALL;
-            }
-            break;
-            
         case EAST:
             for (int x = x1; x <= x2; x++) {
                 map[(y1 - 1) * size + x] = WALL;
@@ -380,14 +380,6 @@ void World::placeHall(Hall h) {
                 map[y * size + x1 - 1] = WALL;
                 map[y * size + x1] = FLOOR;
                 map[y * size + x1 + 1] = WALL;
-            }
-            break;
-            
-        case WEST:
-            for (int x = x1; x <= x2; x++) {
-                map[(y1 - 1) * size + x] = WALL;
-                map[y1 * size + x] = FLOOR;
-                map[(y1 + 1) * size + x] = WALL;
             }
             break;
     }
@@ -488,12 +480,24 @@ void Room::set() {
  */
 
 bool Room::valid(Room other, int offset) {
-    return (other.x > x + w + offset || other.x + other.w < x - offset) || (other.y > y + h + offset || other.y + other.h < y - offset);
+    if (equals(other))
+        return false;
+    
+    int lx1 = x;
+    int uy1 = y;
+    int lx2 = other.x;
+    int uy2 = other.y;
+    int rx1 = x + w;
+    int ly1 = y + h;
+    int rx2 = other.x + other.w;
+    int ly2 = other.y + other.h;
+    
+    return ((lx2 > rx1 + offset || rx2 < lx1 - offset) || (uy2 > ly1 + offset || ly2 < uy1 - offset));
 }
 
 bool Room::valid(std::vector<Room> &others, int offset) {
     for (Room r : others)
-        if (!equals(r) && !valid(r, offset))
+        if (num() != r.num() && !valid(r, offset))
             return false;
     return true;
 }
@@ -506,7 +510,7 @@ bool Room::validX(Room other, int offset) {
 
 bool Room::validX(std::vector<Room> &others, int offset) {
     for (Room r : others)
-        if (!equals(r) && !validX(r, offset))
+        if (num() != r.num() && !validX(r, offset))
             return false;
     return true;
 }
@@ -519,7 +523,7 @@ bool Room::validY(Room other, int offset) {
 
 bool Room::validY(std::vector<Room> &others, int offset) {
     for (Room r : others)
-        if (!equals(r) && !validY(r, offset))
+        if (num() != r.num() && !validY(r, offset))
             return false;
     return true;
 }
@@ -650,6 +654,13 @@ Hall::Hall(int s, int sxy, int e, int exy, int d) : start(s), startxy(sxy), end(
         else if (d == WEST)
             direction = EAST;
     }
+    
+    int size = DEFAULT_MAP_SIZE;
+    
+    if (direction == SOUTH)
+        length = (endxy / size) - (startxy / size);
+    else
+        length = (endxy % size) - (startxy % size);
 };
 
 Hall::Hall() : start(-1), startxy(-1), end(-1), endxy(-1), direction(-1) { }
@@ -660,6 +671,34 @@ bool Hall::equals(Hall other) {
 
 bool Hall::sameConnection(Hall other) {
     return (start == other.start) && (end == other.end);
+}
+
+bool Hall::crosses(Hall other) {
+    if (equals(other))
+        return true;
+    
+    int size = DEFAULT_MAP_SIZE;
+    
+    int ax1 = startxy % size;
+    int ax2 = endxy % size;
+    int ay1 = startxy / size;
+    int ay2 = endxy / size;
+    
+    int bx1 = other.startxy % size;
+    int bx2 = other.endxy % size;
+    int by1 = other.startxy / size;
+    int by2 = other.endxy / size;
+    
+    if (ax1 == ax2 && by1 == by2 && ax1 >= bx1 && ax1 <= bx2 && by1 >= ay1 && by1 <= ay2)
+        return true;
+    if (ay1 == ay2 && bx1 == bx2 && ay1 >= by1 && ay1 <= by2 && bx1 >= ax1 && bx1 <= ax2)
+        return true;
+    
+    return false;
+}
+
+int Hall::len() {
+    return length;
 }
 
 std::pair<int, int> Hall::rooms() {
