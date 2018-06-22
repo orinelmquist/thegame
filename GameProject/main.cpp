@@ -14,11 +14,12 @@
 //const unsigned int SEED = 143245543;
 
 //Seed         Error
+//1529537124   Unconnected part of cave
 
 int main() {
         
-    unsigned int seed = time(NULL);
-//    unsigned int seed = 1529476068;
+//    unsigned int seed = time(NULL);
+    unsigned int seed = 1529537124;
 
     srand(seed);
 

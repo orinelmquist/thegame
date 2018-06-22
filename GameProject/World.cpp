@@ -137,13 +137,16 @@ void World::buildCave() {
     std::vector<bool> connected, visited;
     int c = 0, rx, ry;
     
-    for (int i = 0; i < size * size; i++) {
-        connected.push_back(false);
-        visited.push_back(false);
-    }
-    
     while ((100 * c) / (size * size) <= 25) {
         c = 0;
+        
+        connected.clear();
+        visited.clear();
+        
+        for (int i = 0; i < size * size; i++) {
+            connected.push_back(false);
+            visited.push_back(false);
+        }
     
         do {
             rx = rand() % (size - 1) + 1;
@@ -382,6 +385,8 @@ void World::placeHall(Hall h) {
             }
             break;
     }
+    set(x1, y1, DOOR);
+    set(x2, y2, DOOR);
 }
 
 
