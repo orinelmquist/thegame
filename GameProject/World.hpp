@@ -13,6 +13,8 @@
 #include <iostream>
 #include <set>
 #include <vector>
+#include <stack>
+#include <algorithm>
 
 class Room {
 public:
@@ -86,7 +88,7 @@ private:
     std::vector<Hall> updateHalls(std::vector<Hall> possibles);
     int getRoomByEdge(int coord);
     void placeHall(Hall h);
-    void flood(std::vector<bool> &visited, std::vector<bool> &connected, int x, int y, int &c);
+    std::vector<bool> flood(int x, int y, int &c);
 };
 
 #endif /* World_hpp */

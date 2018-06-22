@@ -39,7 +39,7 @@ public:
         Node(int _val) : val(_val), rank(0), parent(this) { };
     };
     
-    DJS(int size);
+    DJS(size_t size);
     Node* find(Node* i);
     void merge(int i, int j);
     bool connected();
@@ -47,9 +47,10 @@ public:
     std::vector<DJS::Node*> v;
 };
 
-DJS::DJS(int size) {
-    for (int i = 0; i < size; i++)
-        v.push_back(new Node(i));
+DJS::DJS(size_t size) {
+    int value = 0;
+    for (size_t i = 0; i < size; i++)
+        v.push_back(new Node(value++));
 }
 
 DJS::Node* DJS::find(Node* n) {
@@ -76,7 +77,7 @@ void DJS::merge(int i, int j) {
 bool DJS::connected() {
     int c = v[0]->parent->val;
     
-    for (int i = 1; i < v.size(); i++)
+    for (size_t i = 1; i < v.size(); i++)
         if (find(v[i])->val != c)
             return false;
     
@@ -134,27 +135,18 @@ void World::buildCave() {
     
     //Remove inaccessable caverns
     
-    std::vector<bool> connected, visited;
+    std::vector<bool> connected;
     int c = 0, rx, ry;
     
     while ((100 * c) / (size * size) <= 25) {
-        c = 0;
-        
-        connected.clear();
-        visited.clear();
-        
-        for (int i = 0; i < size * size; i++) {
-            connected.push_back(false);
-            visited.push_back(false);
-        }
     
         do {
             rx = rand() % (size - 1) + 1;
             ry = rand() % (size - 1) + 1;
         } while (map[ry * size + rx] != FLOOR);
     
-        flood(visited, connected, rx, ry, c);
-//        std::cout << "Random cavern covers " << (100 * c) / (size * size) << " percent of the cave." << std::endl << std::endl;
+        connected = flood(rx, ry, c);
+        std::cout << "Random cavern covers " << (100 * c) / (size * size) << " percent of the cave. c = " <<  c << std::endl << std::endl;
     }
     
     for (int i = 0; i < size * size; i++)
@@ -205,7 +197,7 @@ void World::buildDungeon() {
     do {
         moves = 0;
         std::sort(rooms.begin(), rooms.end(), Room::compareXY);
-        for (int i = 0; i < rooms.size(); i++)
+        for (size_t i = 0; i < rooms.size(); i++)
             while (rooms[i].moveXY(rooms, roomDistanceThreshold))
                 moves++;
     } while (moves > 0);
@@ -435,20 +427,56 @@ std::ostream &operator<<(std::ostream &out, const World &w) {
     return out;
 }
 
-void World::flood(std::vector<bool> &visited, std::vector<bool> &connected, int x, int y, int &c) {
-    visited[y * size + x] = true;
-    if (map[y * size + x] == FLOOR) {
-        connected[y * size + x] = true;
-        c++;
-        if (!visited[(y - 1) * size + x] && !connected[(y - 1) * size + x])
-            flood(visited, connected, x, y - 1, c);
-        if (!visited[y * size + x + 1] && !connected[y * size + x + 1])
-            flood(visited, connected, x + 1, y, c);
-        if (!visited[(y + 1) * size + x] && !connected[(y + 1) * size + x])
-            flood(visited, connected, x, y + 1, c);
-        if (!visited[y * size + x - 1] && !connected[y * size + x - 1])
-            flood(visited, connected, x - 1, y, c);
+//void World::flood(std::vector<bool> &visited, std::vector<bool> &connected, int x, int y, int &c) {
+//    visited[y * size + x] = true;
+//    if (map[y * size + x] == FLOOR) {
+//        connected[y * size + x] = true;
+//        c++;
+//        if (!visited[(y - 1) * size + x] && !connected[(y - 1) * size + x])
+//            flood(visited, connected, x, y - 1, c);
+//        if (!visited[y * size + x + 1] && !connected[y * size + x + 1])
+//            flood(visited, connected, x + 1, y, c);
+//        if (!visited[(y + 1) * size + x] && !connected[(y + 1) * size + x])
+//            flood(visited, connected, x, y + 1, c);
+//        if (!visited[y * size + x - 1] && !connected[y * size + x - 1])
+//            flood(visited, connected, x - 1, y, c);
+//    }
+//}
+
+std::vector<bool> World::flood(int x, int y, int &c) {
+    std::vector<bool> visited(size * size, false), connected(size * size, false);
+    std::stack<int> stack;
+    int next, nx, ny;
+    
+    c = 0;
+    
+    stack.push(y * size + x);
+    
+    while (!stack.empty()) {
+        next = stack.top();
+        stack.pop();
+        
+        if (!visited[next] && map[next] == FLOOR) {
+            c++;
+            visited[next] = true;
+            connected[next] = true;
+            
+            nx = next % size;
+            ny = next / size;
+            
+            if (!visited[(ny - 1) * size + nx] && map[(ny - 1) * size + nx] == FLOOR)
+                stack.push((ny - 1) * size + nx);
+            if (!visited[ny * size + nx - 1] && map[ny * size + nx + 1] == FLOOR)
+                stack.push(ny * size + nx + 1);
+            if (!visited[(ny + 1) * size + nx] && map[(ny + 1) * size + nx] == FLOOR)
+                stack.push((ny + 1) * size + nx);
+            if (!visited[ny * size + nx - 1] && map[ny * size + nx - 1] == FLOOR)
+                stack.push(ny * size + nx - 1);
+        }
+        
     }
+    
+    return connected;
 }
 
 
