@@ -11,10 +11,10 @@
 const int DEFAULT_MAP_SIZE = 100;
 
 enum {
-    NORTH = 1,
-    EAST  = 2,
-    SOUTH = 3,
-    WEST  = 4
+    NORTH = 0,
+    EAST  = 1,
+    SOUTH = 2,
+    WEST  = 3
 };
 
 enum {
@@ -232,6 +232,14 @@ void World::buildDungeon() {
         placeHall(h);
     
     //Deal with the standed room
+    if (strandedRoom) {
+    
+        //Find a seed with a stranded room first. Case may not exist.
+        std::cout << "*****************************" << std::endl;
+        std::cout << "********STRANDED ROOM********" << std::endl;
+        std::cout << "*****************************" << std::endl;
+        
+    }
 }
 
 std::vector<Hall> World::setPossHalls() {
@@ -248,7 +256,7 @@ std::vector<Hall> World::setPossHalls() {
     for (Room r : rooms) {
         temp = r.edges();
         
-        for (int i : temp[0]) {
+        for (int i : temp[NORTH]) {
             n = 0;
             x = i % size;
             y = i / size;
@@ -263,7 +271,7 @@ std::vector<Hall> World::setPossHalls() {
             }
         }
         
-        for (int i : temp[1]) {
+        for (int i : temp[EAST]) {
             n = 0;
             x = i % size;
             y = i / size;
@@ -278,7 +286,7 @@ std::vector<Hall> World::setPossHalls() {
             }
         }
         
-        for (int i : temp[2]) {
+        for (int i : temp[SOUTH]) {
             n = 0;
             x = i % size;
             y = i / size;
@@ -293,7 +301,7 @@ std::vector<Hall> World::setPossHalls() {
             }
         }
         
-        for (int i : temp[3]) {
+        for (int i : temp[WEST]) {
             n = 0;
             x = i % size;
             y = i / size;
@@ -531,7 +539,8 @@ bool Room::equals(Room other) {
 
 
 /*
- Returns edges in NESW order vector to find possible Halls
+ edges -
+ Returns a vector of room edges in a NORTH, EAST, SOUTH, WEST order vector to find possible Halls
  */
 
 std::vector<std::vector<int>> Room::edges() {
@@ -640,6 +649,8 @@ std::pair<int, int> Room::dim() {
  will adjust so sxy < exy to limit duplicate halls
  */
 
+int Hall::size = DEFAULT_MAP_SIZE;
+
 Hall::Hall(int s, int sxy, int e, int exy, int d) : start(s), startxy(sxy), end(e), endxy(exy), direction(d) {
     if (sxy > exy) {
         startxy = exy;
@@ -652,15 +663,18 @@ Hall::Hall(int s, int sxy, int e, int exy, int d) : start(s), startxy(sxy), end(
             direction = EAST;
     }
     
-    int size = DEFAULT_MAP_SIZE;
-    
     if (direction == SOUTH)
         length = (endxy / size) - (startxy / size);
     else
         length = (endxy % size) - (startxy % size);
 };
 
-Hall::Hall() : start(-1), startxy(-1), end(-1), endxy(-1), direction(-1) { }
+Hall::Hall() : start(-1), startxy(-1), end(-1), endxy(-1), direction(-1), length(-1) { }
+
+
+/*
+ Comparison functions
+ */
 
 bool Hall::equals(Hall other) {
     return (startxy == other.startxy) && (endxy == other.endxy);
@@ -673,8 +687,6 @@ bool Hall::sameConnection(Hall other) {
 bool Hall::crosses(Hall other) {
     if (equals(other))
         return true;
-    
-    int size = DEFAULT_MAP_SIZE;
     
     int ax1 = startxy % size;
     int ax2 = endxy % size;
@@ -693,6 +705,11 @@ bool Hall::crosses(Hall other) {
     
     return false;
 }
+
+
+/*
+ Value retrevial
+ */
 
 int Hall::len() {
     return length;

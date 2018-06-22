@@ -62,6 +62,7 @@ public:
     
 private:
     int start, startxy, end, endxy, direction, length;
+    static int size;
 };
 
 class World {
