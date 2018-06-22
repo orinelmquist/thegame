@@ -88,7 +88,7 @@ private:
     std::vector<Hall> updateHalls(std::vector<Hall> possibles);
     int getRoomByEdge(int coord);
     void placeHall(Hall h);
-    std::vector<bool> flood(int x, int y, int &c);
+    std::vector<bool> flood(int coord, int &c);
 };
 
 #endif /* World_hpp */
