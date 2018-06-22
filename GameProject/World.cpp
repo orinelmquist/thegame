@@ -146,7 +146,7 @@ void World::buildCave() {
         } while (map[ry * size + rx] != FLOOR);
     
         connected = flood(rx, ry, c);
-        std::cout << "Random cavern covers " << (100 * c) / (size * size) << " percent of the cave. c = " <<  c << std::endl << std::endl;
+//        std::cout << "Random cavern covers " << (100 * c) / (size * size) << " percent of the cave. c = " <<  c << std::endl << std::endl;
     }
     
     for (int i = 0; i < size * size; i++)
@@ -446,33 +446,28 @@ std::ostream &operator<<(std::ostream &out, const World &w) {
 std::vector<bool> World::flood(int x, int y, int &c) {
     std::vector<bool> visited(size * size, false), connected(size * size, false);
     std::stack<int> stack;
-    int next, nx, ny;
+    int next = y * size + x;
     
     c = 0;
     
-    stack.push(y * size + x);
+    stack.push(next);
     
     while (!stack.empty()) {
         next = stack.top();
         stack.pop();
         
-        if (!visited[next] && map[next] == FLOOR) {
-            c++;
-            visited[next] = true;
-            connected[next] = true;
-            
-            nx = next % size;
-            ny = next / size;
-            
-            if (!visited[(ny - 1) * size + nx] && map[(ny - 1) * size + nx] == FLOOR)
-                stack.push((ny - 1) * size + nx);
-            if (!visited[ny * size + nx - 1] && map[ny * size + nx + 1] == FLOOR)
-                stack.push(ny * size + nx + 1);
-            if (!visited[(ny + 1) * size + nx] && map[(ny + 1) * size + nx] == FLOOR)
-                stack.push((ny + 1) * size + nx);
-            if (!visited[ny * size + nx - 1] && map[ny * size + nx - 1] == FLOOR)
-                stack.push(ny * size + nx - 1);
-        }
+        c++;
+        visited[next] = true;
+        connected[next] = true;
+        
+        if (!visited[next - size] && map[next - size] == FLOOR)
+            stack.push(next - size);
+        if (!visited[next + 1] && map[next + 1] == FLOOR)
+            stack.push(next + 1);
+        if (!visited[next + size] && map[next + size] == FLOOR)
+            stack.push(next + size);
+        if (!visited[next - 1] && map[next - 1] == FLOOR)
+            stack.push(next - 1);
         
     }
     
