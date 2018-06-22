@@ -43,6 +43,7 @@ public:
     Node* find(Node* i);
     void merge(int i, int j);
     bool connected();
+    bool connected(int first, int second);
     
     std::vector<DJS::Node*> v;
 };
@@ -84,6 +85,13 @@ bool DJS::connected() {
     return true;
 }
 
+bool DJS::connected(int first, int second) {
+    Node* f = find(v[first]);
+    Node* s = find(v[second]);
+    
+    return f->val == s->val;
+}
+
 
 /////////////////
 // World Class //
@@ -95,23 +103,20 @@ bool DJS::connected() {
  buildCave:
      percentWall - (Default 45) Bigger number for less floor space
  */
+
 void World::buildCave() {
     int percentWall = 46;
     
     //Randomly Generate Walls and Floors
-    
     for (int y = 1; y < size - 1; y++)
         for (int x = 1; x < size - 1; x++)
             if (rand() % 100 > percentWall)
-                map[y * size + x] = FLOOR;
-    
-//    std::cout << "Random Map:" << std::endl;
-//    std::cout << (*this) << std::endl << std::endl << std::endl;
+                set(x, y, FLOOR);
     
     //Clean it up
-    
     std::vector<int> temp;
     int n;
+    
     temp = map;
     
     for (int i = 0; i < 5; i++) {
@@ -128,33 +133,24 @@ void World::buildCave() {
                     temp[y * size + x] = FLOOR;
         }
         map = temp;
-        
-//        std::cout << "Iteration #" << i + 1 << std::endl;
-//        std::cout << (*this) << std::endl << std::endl;
     }
     
     //Remove inaccessable caverns
-    
     std::vector<bool> connected;
-    int c = 0, rx, ry;
+    int spots = 0, randCoord;
     
-    while ((100 * c) / (size * size) <= 25) {
+    while ((100 * spots) / (size * size) <= 25) {
     
         do {
-            rx = rand() % (size - 1) + 1;
-            ry = rand() % (size - 1) + 1;
-        } while (map[ry * size + rx] != FLOOR);
+            randCoord = rand() % (size * (size - 2)) + size;
+        } while (map[randCoord] != FLOOR);
     
-        connected = flood(rx, ry, c);
-//        std::cout << "Random cavern covers " << (100 * c) / (size * size) << " percent of the cave. c = " <<  c << std::endl << std::endl;
+        connected = flood(randCoord, spots);
     }
     
     for (int i = 0; i < size * size; i++)
         if (!connected[i])
-            map[i] = WALL;
-
-//    std::cout << "Flood:" << std::endl;
-//    std::cout << (*this) << std::endl << std::endl;
+            set(i % size, i / size, WALL);
 }
 
 
@@ -186,11 +182,6 @@ void World::buildDungeon() {
         rooms.push_back(temp);
     }
     
-//    for (Room r : rooms)
-//        placeRoom(r);
-//    std::cout << "Before centralization: " << std::endl;
-//    std::cout << (*this) << std::endl;
-    
     //Sort rooms by distance to center and compact the rooms
     int moves;
     
@@ -202,15 +193,16 @@ void World::buildDungeon() {
                 moves++;
     } while (moves > 0);
     
+    //Place Rooms
     for (Room r : rooms)
         placeRoom(r);
     
     //Minimally connect the rooms
     std::vector<Hall> possHalls;
     DJS connSet(rooms.size());
-    Hall curr;
+    Hall currHall;
     bool strandedRoom = false;
-    int c;
+    int randHall;
     
     possHalls = setPossHalls();
     
@@ -224,14 +216,14 @@ void World::buildDungeon() {
         }
         
         //Randomly select a room, if it is a new connection add to the list and update the DJS
-        c = rand() % possHalls.size();
-        curr = possHalls[c];
+        randHall = rand() % possHalls.size();
+        currHall = possHalls[randHall];
         
-        if (connSet.find(connSet.v[curr.rooms().first])->val != connSet.find(connSet.v[curr.rooms().second])->val && curr.len() <= 3 * roomDistanceThreshold) {
-            halls.push_back(curr);
-            connSet.merge(curr.rooms().first, curr.rooms().second);
+        if (!connSet.connected(currHall.rooms().first, currHall.rooms().second) && currHall.len() <= 3 * roomDistanceThreshold) {
+            halls.push_back(currHall);
+            connSet.merge(currHall.rooms().first, currHall.rooms().second);
         } else {
-            possHalls.erase(possHalls.begin() + c);
+            possHalls.erase(possHalls.begin() + randHall);
         }
         
     } while (!connSet.connected());
@@ -243,10 +235,10 @@ void World::buildDungeon() {
 }
 
 std::vector<Hall> World::setPossHalls() {
-    int x, y, n, endRoom;
     std::vector<std::vector<int>> temp;
     std::vector<Hall> possibles;
     std::set<int> edges;
+    int x, y, n, endRoom;
     
     for (Room r : rooms)
         for (std::vector<int> v : r.edges())
@@ -264,7 +256,7 @@ std::vector<Hall> World::setPossHalls() {
                 n++;
                 if (map[(y - n - 1) * size + x] == FLOOR) {
                     endRoom = getRoomByEdge((y - n) * size + x);
-                    if (edges.find((y - n) * size + x) != edges.end() && endRoom >= -1 && map[(y - n - 2) * size + x] == FLOOR)
+                    if (edges.find((y - n) * size + x) != edges.end() && endRoom > -1)
                         possibles.push_back(Hall(r.num(), y * size + x, endRoom, (y - n) * size + x, NORTH));
                     break;
                 }
@@ -279,7 +271,7 @@ std::vector<Hall> World::setPossHalls() {
                 n++;
                 if (map[y * size + x + n + 1] == FLOOR) {
                     endRoom = getRoomByEdge(y * size + x + n);
-                    if (edges.find(y * size + x + n) != edges.end() && endRoom >= -1 && map[y * size + x + n + 2] == FLOOR)
+                    if (edges.find(y * size + x + n) != edges.end() && endRoom > -1)
                         possibles.push_back(Hall(r.num(), y * size + x, endRoom, y * size + x + n, EAST));
                     break;
                 }
@@ -294,7 +286,7 @@ std::vector<Hall> World::setPossHalls() {
                 n++;
                 if (map[(y + n + 1) * size + x] == FLOOR) {
                     endRoom = getRoomByEdge((y + n) * size + x);
-                    if (edges.find((y + n) * size + x) != edges.end() && endRoom >= -1 && map[(y + n + 2) * size + x] == FLOOR)
+                    if (edges.find((y + n) * size + x) != edges.end() && endRoom > -1)
                         possibles.push_back(Hall(r.num(), y * size + x, endRoom, (y + n) * size + x, SOUTH));
                     break;
                 }
@@ -309,7 +301,7 @@ std::vector<Hall> World::setPossHalls() {
                 n++;
                 if (map[y * size + x - n - 1] == FLOOR) {
                     endRoom = getRoomByEdge(y * size + x - n);
-                    if (edges.find(y * size + x - n) != edges.end() && endRoom >= 0 && map[y * size + x - n - 2] == FLOOR)
+                    if (edges.find(y * size + x - n) != edges.end() && endRoom > -1)
                         possibles.push_back(Hall(r.num(), y * size + x, endRoom, y * size + x - n, WEST));
                     break;
                 }
@@ -322,16 +314,16 @@ std::vector<Hall> World::setPossHalls() {
 
 std::vector<Hall> World::updateHalls(std::vector<Hall> possibles) {
     std::vector<Hall> temp;
-    bool matches;
+    bool validHall;
     
     for (Hall p : possibles) {
-        matches = false;
+        validHall = true;
         
         for (Hall h : halls)
-            if (h.sameConnection(p) && !h.crosses(p))
-                matches = true;
+            if (p.sameConnection(h) || p.crosses(h))
+                validHall = false;
         
-        if (!matches)
+        if (validHall)
             temp.push_back(p);
     }
     
@@ -352,7 +344,7 @@ int World::getRoomByEdge(int coord) {
 void World::placeRoom(Room r) {
     for (int y = r.coords().second + 1; y < r.coords().second + r.dim().second; y++)
         for (int x = r.coords().first + 1; x < r.coords().first + r.dim().first; x++)
-                map[y * size + x] = FLOOR;
+                set(x, y, FLOOR);
 }
 
 void World::placeHall(Hall h) {
@@ -362,19 +354,13 @@ void World::placeHall(Hall h) {
     int y2 = h.coords().second / size;
     switch (h.dir()) {
         case EAST:
-            for (int x = x1; x <= x2; x++) {
-                map[(y1 - 1) * size + x] = WALL;
-                map[y1 * size + x] = FLOOR;
-                map[(y1 + 1) * size + x] = WALL;
-            }
+            for (int x = x1 + 1; x < x2; x++)
+                set(x, y1, FLOOR);
             break;
             
         case SOUTH:
-            for (int y = y1; y <= y2; y++) {
-                map[y * size + x1 - 1] = WALL;
-                map[y * size + x1] = FLOOR;
-                map[y * size + x1 + 1] = WALL;
-            }
+            for (int y = y1 + 1; y < y2; y++)
+                set(x1, y, FLOOR);
             break;
     }
     set(x1, y1, DOOR);
@@ -427,30 +413,14 @@ std::ostream &operator<<(std::ostream &out, const World &w) {
     return out;
 }
 
-//void World::flood(std::vector<bool> &visited, std::vector<bool> &connected, int x, int y, int &c) {
-//    visited[y * size + x] = true;
-//    if (map[y * size + x] == FLOOR) {
-//        connected[y * size + x] = true;
-//        c++;
-//        if (!visited[(y - 1) * size + x] && !connected[(y - 1) * size + x])
-//            flood(visited, connected, x, y - 1, c);
-//        if (!visited[y * size + x + 1] && !connected[y * size + x + 1])
-//            flood(visited, connected, x + 1, y, c);
-//        if (!visited[(y + 1) * size + x] && !connected[(y + 1) * size + x])
-//            flood(visited, connected, x, y + 1, c);
-//        if (!visited[y * size + x - 1] && !connected[y * size + x - 1])
-//            flood(visited, connected, x - 1, y, c);
-//    }
-//}
-
-std::vector<bool> World::flood(int x, int y, int &c) {
+std::vector<bool> World::flood(int coord, int &c) {
     std::vector<bool> visited(size * size, false), connected(size * size, false);
     std::stack<int> stack;
-    int next = y * size + x;
+    int next;
     
     c = 0;
     
-    stack.push(next);
+    stack.push(coord);
     
     while (!stack.empty()) {
         next = stack.top();
@@ -561,7 +531,7 @@ bool Room::equals(Room other) {
 
 
 /*
- Returns edges in NESW order vector to find room connections
+ Returns edges in NESW order vector to find possible Halls
  */
 
 std::vector<std::vector<int>> Room::edges() {
